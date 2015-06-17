@@ -110,7 +110,25 @@ enum {
  */
 int rtimer_set(struct rtimer *task, rtimer_clock_t time,
 	       rtimer_clock_t duration, rtimer_callback_t func, void *ptr);
-
+/**
+ * \brief Post a real-time task relative to a target in the past
+ * \param task A pointer to the task variable previously declared with
+ *        RTIMER_TASK().
+ * \param duration Unused argument.
+ * \param func A function to be called when the task is executed.
+ * \param ptr An opaque pointer that will be supplied as an argument to the
+ *        callback function.
+ * \param target rtimer time located in the past but not more than one clock
+ *        wrap around period in the past (otherwise we can't detect if we
+ *        missed our target time)
+ * \param rel time relative to the target at which to run the given function
+ * \return RTIMER_OK on success and RTIMER_ERR_TIME if the time relative to
+ *         the target appears to be in the past.
+ *
+*/
+int rtimer_setRelTarget(struct rtimer *rtimer, rtimer_clock_t rel,
+	   rtimer_clock_t target, rtimer_clock_t duration,
+	   rtimer_callback_t func, void *ptr);
 /**
  * \brief      Execute the next real-time task and schedule the next task, if any
  *
@@ -144,6 +162,16 @@ void rtimer_run_next(void);
  * \hideinitializer
  */
 #define RTIMER_TIME(task) ((task)->time)
+/**
+ * \brief      Cancel the last scheduled rtimer event
+ * \return     void
+ *
+ *             This function will cancel the last scheduled rtimer event such
+ *             that it will never execute.
+ *
+ * \hideinitializer
+ */
+void rtimer_invalidate(void);
 
 void rtimer_arch_init(void);
 void rtimer_arch_schedule(rtimer_clock_t t);

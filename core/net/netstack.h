@@ -97,6 +97,12 @@
 #endif /* NETSTACK_CONF_RADIO */
 #endif /* NETSTACK_RADIO */
 
+#ifndef NETSTACK_RFASYNC
+#ifdef NETSTACK_CONF_RFASYNC
+#define NETSTACK_RFASYNC NETSTACK_CONF_RFASYNC
+#endif /* NETSTACK_CONF_RADIO */
+#endif /* NETSTACK_RADIO */
+
 #ifndef NETSTACK_FRAMER
 #ifdef NETSTACK_CONF_FRAMER
 #define NETSTACK_FRAMER NETSTACK_CONF_FRAMER
@@ -130,6 +136,10 @@ extern const struct rdc_driver     NETSTACK_RDC;
 extern const struct mac_driver     NETSTACK_MAC;
 extern const struct radio_driver   NETSTACK_RADIO;
 extern const struct framer         NETSTACK_FRAMER;
+
+#ifdef NETSTACK_RFASYNC
+extern const struct asyncRF_driver NETSTACK_RFASYNC;
+#endif
 
 void netstack_init(void);
 

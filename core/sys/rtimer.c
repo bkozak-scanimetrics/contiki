@@ -88,6 +88,29 @@ rtimer_set(struct rtimer *rtimer, rtimer_clock_t time,
   return RTIMER_OK;
 }
 /*---------------------------------------------------------------------------*/
+int
+rtimer_setRelTarget(struct rtimer *rtimer, rtimer_clock_t rel,
+	   rtimer_clock_t target, rtimer_clock_t duration,
+	   rtimer_callback_t func, void *ptr)
+{
+  int ret;
+  rtimer_clock_t now = RTIMER_NOW();
+  rtimer_clock_t diff = now - target;
+  rtimer_clock_t time = now+rel-diff;
+
+  /* An atomic section here would make it much safer to set tight targets */
+  /* TODO: add atomic section ATOMIC_SECTION_ENTER(); */
+  if(diff < (rel-1)){
+    ret = rtimer_set(rtimer,time,duration,func,ptr);
+  }
+  else{
+    ret = RTIMER_ERR_TIME;
+  }
+  /* TODO: add atomic section ATOMIC_SECTION_EXIT(); */
+
+  return ret;
+}
+/*---------------------------------------------------------------------------*/
 void
 rtimer_run_next(void)
 {
@@ -102,6 +125,16 @@ rtimer_run_next(void)
     rtimer_arch_schedule(next_rtimer->time);
   }
   return;
+}
+/*---------------------------------------------------------------------------*/
+void
+rtimer_invalidate(void)
+{
+  /* necessarry to disable interupts here if we want to be able to call from
+  an ISR. */
+  /* TODO: add atomic section  ATOMIC_SECTION_ENTER(); */
+  next_rtimer = NULL;
+  /* TODO: add atomic section  ATOMIC_SECTION_EXIT(); */
 }
 /*---------------------------------------------------------------------------*/
 

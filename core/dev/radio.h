@@ -58,6 +58,8 @@
 #define RADIO_H_
 
 #include <stddef.h>
+#include <stdint.h>
+#include "sys/rtimer.h"
 
 /**
  * Each radio has a set of parameters that designate the current
@@ -159,6 +161,11 @@ enum {
    */
   RADIO_PARAM_64BIT_ADDR,
 
+  /*
+  * Callback function pointers required for using the async interface
+  */
+  RADIO_PARAM_ASYNC_CALLBACKS,
+
   /* Constants (read only) */
 
   /* The lowest radio channel. */
@@ -208,7 +215,9 @@ typedef enum {
   RADIO_RESULT_OK,
   RADIO_RESULT_NOT_SUPPORTED,
   RADIO_RESULT_INVALID_VALUE,
-  RADIO_RESULT_ERROR
+  RADIO_RESULT_ERROR,
+  RADIO_RESULT_BUSY
+
 } radio_result_t;
 
 /* Radio return values for transmissions. */
@@ -218,7 +227,29 @@ enum {
   RADIO_TX_COLLISION,
   RADIO_TX_NOACK,
 };
-
+/**
+ * Interface for asyncronous radio operations
+**/
+struct asyncRF_driver{
+  /** start packet transmission, finishes in a callback */
+  void (*transmit)(unsigned short tx_len);
+  /** start CCA detection, finishes in a callback */
+  void (*getCCA)(void);
+  /** starts scanning for RF ACKs, normal RF operation may suspend */
+  radio_result_t (*startAckDetect)(uint8_t seqno);
+  /** stops scanning for ACS; normal RF operation will resume */
+  radio_result_t (*stopAckDetect)(void);
+  /** Returns true if an ack was detected since startAckDetect() */
+  int            (*ackDetected)(void);
+};
+/**
+ * Callbacks to run when finished asyncronous commands
+**/
+struct asyncRF_callbacks{
+  void(*txDone)(int, rtimer_clock_t);
+  void(*ccaDone)(radio_result_t,bool,rtimer_clock_t);
+  void (*ackDone)(void);
+};
 /**
  * The structure of a device driver for a radio in Contiki.
  */
