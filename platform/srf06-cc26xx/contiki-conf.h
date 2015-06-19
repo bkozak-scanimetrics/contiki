@@ -311,6 +311,10 @@
 #define CCIF
 #define CLIF
 
+#if !defined(CC_CONF_INLINE) && defined(__GNUC__)
+#define CC_CONF_INLINE inline
+#endif
+
 /* Platform typedefs */
 typedef uint32_t clock_time_t;
 typedef uint32_t uip_stats_t;
