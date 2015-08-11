@@ -105,7 +105,14 @@ enum {
   UDP_POLL,
   PACKET_INPUT
 };
-
+/*---------------------------------------------------------------------------*/
+static void
+setup_appstate(uip_tcp_appstate_t* as, void* state)
+{
+  as->p = PROCESS_CURRENT();
+  as->state = state;
+}
+/*---------------------------------------------------------------------------*/
 /* Called on IP packet output. */
 #if NETSTACK_CONF_WITH_IPV6
 
@@ -225,8 +232,7 @@ tcp_connect(const uip_ipaddr_t *ripaddr, uint16_t port, void *appstate)
     return NULL;
   }
 
-  c->appstate.p = PROCESS_CURRENT();
-  c->appstate.state = appstate;
+  setup_appstate(&c->appstate, appstate);
   
   tcpip_poll_tcp(c);
   
@@ -277,8 +283,8 @@ tcp_attach(struct uip_conn *conn,
   uip_tcp_appstate_t *s;
 
   s = &conn->appstate;
-  s->p = PROCESS_CURRENT();
-  s->state = appstate;
+
+  setup_appstate(s, appstate);
 }
 
 #endif /* UIP_TCP */
@@ -291,8 +297,8 @@ udp_attach(struct uip_udp_conn *conn,
   uip_udp_appstate_t *s;
 
   s = &conn->appstate;
-  s->p = PROCESS_CURRENT();
-  s->state = appstate;
+
+  setup_appstate(s, appstate);
 }
 /*---------------------------------------------------------------------------*/
 struct uip_udp_conn *
@@ -307,8 +313,7 @@ udp_new(const uip_ipaddr_t *ripaddr, uint16_t port, void *appstate)
   }
 
   s = &c->appstate;
-  s->p = PROCESS_CURRENT();
-  s->state = appstate;
+  setup_appstate(s, appstate);
 
   return c;
 }
@@ -336,8 +341,7 @@ udp_broadcast_new(uint16_t port, void *appstate)
 uint8_t
 icmp6_new(void *appstate) {
   if(uip_icmp6_conns.appstate.p == PROCESS_NONE) {
-    uip_icmp6_conns.appstate.p = PROCESS_CURRENT();
-    uip_icmp6_conns.appstate.state = appstate;
+    setup_appstate(&uip_icmp6_conns.appstate, appstate);
     return 0;
   }
   return 1;
@@ -793,14 +797,8 @@ PROCESS_THREAD(tcpip_process, ev, data)
   PROCESS_BEGIN();
   
 #if UIP_TCP
- {
-   static unsigned char i;
-   
-   for(i = 0; i < UIP_LISTENPORTS; ++i) {
-     s.listenports[i].port = 0;
-   }
+  memset(s.listenports, 0, UIP_LISTENPORTS*sizeof(*(s.listenports)));
    s.p = PROCESS_CURRENT();
- }
 #endif
 
   tcpip_event = process_alloc_event();
@@ -826,3 +824,4 @@ PROCESS_THREAD(tcpip_process, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+
