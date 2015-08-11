@@ -47,8 +47,8 @@ extern uint16_t uip_slen;
 #include <string.h>
 
 /*---------------------------------------------------------------------------*/
-void
-uip_udp_packet_send(struct uip_udp_conn *c, const void *data, int len)
+static void
+send(struct uip_udp_conn *c, const void *data, int len,struct tcpip_sent* sent)
 {
 #if UIP_UDP
   if(data != NULL) {
@@ -67,7 +67,7 @@ uip_udp_packet_send(struct uip_udp_conn *c, const void *data, int len)
 #endif /* UIP_IPV6_MULTICAST */
 
 #if NETSTACK_CONF_WITH_IPV6
-    tcpip_ipv6_output();
+    tcpip_ipv6_output_sent(sent);
 #else
     if(uip_len > 0) {
       tcpip_output();
@@ -76,6 +76,12 @@ uip_udp_packet_send(struct uip_udp_conn *c, const void *data, int len)
   }
   uip_slen = 0;
 #endif /* UIP_UDP */
+}
+/*---------------------------------------------------------------------------*/
+void
+uip_udp_packet_send(struct uip_udp_conn *c, const void *data, int len)
+{
+  send(c, data, len, NULL);
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -100,5 +106,16 @@ uip_udp_packet_sendto(struct uip_udp_conn *c, const void *data, int len,
     uip_ipaddr_copy(&c->ripaddr, &curaddr);
     c->rport = curport;
   }
+}
+/*---------------------------------------------------------------------------*/
+void
+uip_udp_packet_send2(struct uip_udp_conn *c, const void *data, int len,
+                     struct tcpip_sent* sent)
+{
+  sent->ptr = c;
+  sent->callback = tcpip_udp_sent;
+  sent->frag_track = FRAG_TRACK_NONE;
+
+  send(c, data, len, sent);
 }
 /*---------------------------------------------------------------------------*/

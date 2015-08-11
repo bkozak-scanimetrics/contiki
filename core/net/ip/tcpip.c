@@ -72,6 +72,7 @@ extern struct uip_fallback_interface UIP_FALLBACK_INTERFACE;
 #include "rpl/rpl.h"
 #endif
 
+process_event_t tcpip_udp_sent_event;
 process_event_t tcpip_event;
 #if UIP_CONF_ICMP6
 process_event_t tcpip_icmp6_event;
@@ -116,14 +117,14 @@ setup_appstate(uip_tcp_appstate_t* as, void* state)
 /* Called on IP packet output. */
 #if NETSTACK_CONF_WITH_IPV6
 
-static uint8_t (* outputfunc)(const uip_lladdr_t *a);
+static uint8_t (*outputfunc)(const uip_lladdr_t *a, struct tcpip_sent *sent);
 
 uint8_t
-tcpip_output(const uip_lladdr_t *a)
+tcpip_output_sent(const uip_lladdr_t *a, struct tcpip_sent *sent)
 {
   int ret;
   if(outputfunc != NULL) {
-    ret = outputfunc(a);
+    ret = outputfunc(a, sent);
     return ret;
   }
   UIP_LOG("tcpip_output: Use tcpip_set_outputfunc() to set an output function");
@@ -131,7 +132,7 @@ tcpip_output(const uip_lladdr_t *a)
 }
 
 void
-tcpip_set_outputfunc(uint8_t (*f)(const uip_lladdr_t *))
+tcpip_set_outputfunc(uint8_t (*f)(const uip_lladdr_t *, struct tcpip_sent *))
 {
   outputfunc = f;
 }
@@ -154,7 +155,19 @@ tcpip_set_outputfunc(uint8_t (*f)(void))
   outputfunc = f;
 }
 #endif
+/*---------------------------------------------------------------------------*/
+void
+tcpip_udp_sent(struct tcpip_sent *sent, int status)
+{
+  struct uip_udp_conn *conn = sent->ptr;
+  struct tcpip_udp_sent_status data;
 
+  data.conn = conn;
+  data.status = status;
+
+  process_post_synch(conn->appstate.p, tcpip_udp_sent_event, &data);
+}
+/*---------------------------------------------------------------------------*/
 #if UIP_CONF_IP_FORWARD
 unsigned char tcpip_is_forwarding; /* Forwarding right now? */
 #endif /* UIP_CONF_IP_FORWARD */
@@ -526,7 +539,7 @@ tcpip_input(void)
 /*---------------------------------------------------------------------------*/
 #if NETSTACK_CONF_WITH_IPV6
 void
-tcpip_ipv6_output(void)
+tcpip_ipv6_output_sent(struct tcpip_sent *sent)
 {
   uip_ds6_nbr_t *nbr = NULL;
   uip_ipaddr_t *nexthop;
@@ -704,7 +717,7 @@ tcpip_ipv6_output(void)
       }
 #endif /* UIP_ND6_SEND_NA */
 
-      tcpip_output(uip_ds6_nbr_get_ll(nbr));
+      tcpip_output_sent(uip_ds6_nbr_get_ll(nbr), sent);
 
 #if UIP_CONF_IPV6_QUEUE_PKT
       /*
@@ -717,7 +730,7 @@ tcpip_ipv6_output(void)
         uip_len = uip_packetqueue_buflen(&nbr->packethandle);
         memcpy(UIP_IP_BUF, uip_packetqueue_buf(&nbr->packethandle), uip_len);
         uip_packetqueue_free(&nbr->packethandle);
-        tcpip_output(uip_ds6_nbr_get_ll(nbr));
+        tcpip_output_sent(uip_ds6_nbr_get_ll(nbr), sent);
       }
 #endif /*UIP_CONF_IPV6_QUEUE_PKT*/
 
@@ -726,7 +739,7 @@ tcpip_ipv6_output(void)
     }
   }
   /* Multicast IP destination address. */
-  tcpip_output(NULL);
+  tcpip_output_sent(NULL, sent);
   uip_clear_buf();
 }
 #endif /* NETSTACK_CONF_WITH_IPV6 */
@@ -802,6 +815,9 @@ PROCESS_THREAD(tcpip_process, ev, data)
 #endif
 
   tcpip_event = process_alloc_event();
+
+  tcpip_udp_sent_event = process_alloc_event();
+
 #if UIP_CONF_ICMP6
   tcpip_icmp6_event = process_alloc_event();
 #endif /* UIP_CONF_ICMP6 */

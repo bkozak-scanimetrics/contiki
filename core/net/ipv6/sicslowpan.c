@@ -283,7 +283,28 @@ struct sicslowpan_frag_buf {
 };
 
 static struct sicslowpan_frag_buf frag_buf[SICSLOWPAN_FRAGMENT_BUFFERS];
-
+/*---------------------------------------------------------------------------*/
+static void track_frag_start(struct tcpip_sent *sent)
+{
+  if(sent) {
+    sent->frag_track = FRAG_TRACK_UNQUEUED;
+    sent->frag_count_queued = 0;
+  }
+}
+/*---------------------------------------------------------------------------*/
+static void track_frag_queued(struct tcpip_sent *sent)
+{
+  if(sent) {
+    sent->frag_count_queued += 1;
+  }
+}
+/*---------------------------------------------------------------------------*/
+static void track_frag_done(struct tcpip_sent *sent)
+{
+  if(sent && (sent->frag_track != FRAG_TRACK_ERROR)) {
+    sent->frag_track = FRAG_TRACK_ALL_QUEUED;
+  }
+}
 /*---------------------------------------------------------------------------*/
 static int
 clear_fragments(uint8_t frag_info_index)
@@ -1228,6 +1249,39 @@ packet_sent(void *ptr, int status, int transmissions)
   if(callback != NULL) {
     callback->output_callback(status);
   }
+
+  if(ptr) {
+    struct tcpip_sent *sent = ptr;
+
+    switch(sent->frag_track)
+    {
+    case FRAG_TRACK_NONE:
+       sent->callback(sent, status);
+       break;
+     case FRAG_TRACK_UNQUEUED:
+       sent->frag_count_queued -= 1;
+       if(status != MAC_TX_OK) {
+         sent->frag_track = FRAG_TRACK_ERROR;
+       }
+       break;
+     case FRAG_TRACK_ALL_QUEUED:
+       sent->frag_count_queued -= 1;
+       if(status != MAC_TX_OK) {
+          sent->frag_track = FRAG_TRACK_ERROR;
+          sent->first_fail_status = status;
+       } else if(sent->frag_count_queued == 0) {
+         sent->callback(sent, status);
+       }
+       break;
+     case FRAG_TRACK_ERROR:
+       sent->frag_count_queued -= 1;
+       if(sent->frag_count_queued == 0) {
+         sent->callback(sent, sent->first_fail_status);
+       }
+       break;
+    }
+  }
+
   last_tx_status = status;
 }
 /*--------------------------------------------------------------------*/
@@ -1235,9 +1289,10 @@ packet_sent(void *ptr, int status, int transmissions)
  * \brief This function is called by the 6lowpan code to send out a
  * packet.
  * \param dest the link layer destination address of the packet
+ * \param sent data used for calling back into the application on tx done
  */
 static void
-send_packet(linkaddr_t *dest)
+send_packet(linkaddr_t *dest,struct tcpip_sent *sent)
 {
   /* Set the link layer destination address for the packet as a
    * packetbuf attribute. The MAC layer can access the destination
@@ -1252,7 +1307,7 @@ send_packet(linkaddr_t *dest)
 
   /* Provide a callback function to receive the result of
      a packet transmission. */
-  NETSTACK_LLSEC.send(&packet_sent, NULL);
+  NETSTACK_LLSEC.send(&packet_sent, sent);
 
   /* If we are sending multiple packets in a row, we need to let the
      watchdog know that we are still alive. */
@@ -1262,6 +1317,7 @@ send_packet(linkaddr_t *dest)
 /** \brief Take an IP packet and format it to be sent on an 802.15.4
  *  network using 6lowpan.
  *  \param localdest The MAC address of the destination
+ *  \param sent data used for calling back into the application on tx done
  *
  *  The IP packet is initially in uip_buf. Its header is compressed
  *  and if necessary it is fragmented. The resulting
@@ -1269,7 +1325,7 @@ send_packet(linkaddr_t *dest)
  *  MAC.
  */
 static uint8_t
-output(const uip_lladdr_t *localdest)
+output(const uip_lladdr_t *localdest, struct tcpip_sent* sent)
 {
   int framer_hdrlen;
   int max_payload;
@@ -1412,7 +1468,9 @@ output(const uip_lladdr_t *localdest)
       PRINTFO("could not allocate queuebuf for first fragment, dropping packet\n");
       return 0;
     }
-    send_packet(&dest);
+    track_frag_start(sent);
+    track_frag_queued(sent);
+    send_packet(&dest, sent);
     queuebuf_to_packetbuf(q);
     queuebuf_free(q);
     q = NULL;
@@ -1458,7 +1516,11 @@ output(const uip_lladdr_t *localdest)
         PRINTFO("could not allocate queuebuf, dropping fragment\n");
         return 0;
       }
-      send_packet(&dest);
+      track_frag_queued(sent);
+      if((processed_ip_out_len + packetbuf_payload_len) >= uip_len) {
+        track_frag_done(sent);
+      }
+      send_packet(&dest, sent);
       queuebuf_to_packetbuf(q);
       queuebuf_free(q);
       q = NULL;
@@ -1485,7 +1547,7 @@ output(const uip_lladdr_t *localdest)
     memcpy(packetbuf_ptr + packetbuf_hdr_len, (uint8_t *)UIP_IP_BUF + uncomp_hdr_len,
            uip_len - uncomp_hdr_len);
     packetbuf_set_datalen(uip_len - uncomp_hdr_len + packetbuf_hdr_len);
-    send_packet(&dest);
+    send_packet(&dest, sent);
   }
   return 1;
 }
