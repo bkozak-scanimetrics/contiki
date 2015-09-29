@@ -285,11 +285,20 @@ ieee_common_init_rf_params(rfc_CMD_IEEE_RX_t *cmd)
 uint8_t
 ieee_common_rf_is_on(rfc_CMD_IEEE_RX_t *cmd)
 {
+  uint16_t status;
   if(!rf_core_is_accessible()) {
     return 0;
   }
 
-  return RF_RADIO_OP_GET_STATUS(cmd) == RF_CORE_RADIO_OP_STATUS_ACTIVE;
+  status = RF_RADIO_OP_GET_STATUS(cmd);
+
+  if(status == RF_CORE_RADIO_OP_STATUS_ACTIVE) {
+    return 1;
+  } else if(status == RF_CORE_RADIO_OP_STATUS_IEEE_SUSPENDED) {
+    return 1;
+  }
+
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -382,9 +391,43 @@ ieee_comon_pending_packet(void)
       process_poll(&rf_core_process);
       return 1;
     }
-
     entry = (rfc_dataEntry_t *)entry->pNextEntry;
   } while(entry != (rfc_dataEntry_t *)rx_data_queue.pCurrEntry);
+
+  /* If we didn't find an entry at status finished, no frames are pending */
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+int
+ieee_common_packet_finished(volatile rfc_dataEntry_t *entry)
+{
+  return entry->status == DATA_ENTRY_STATUS_FINISHED;
+}
+/*---------------------------------------------------------------------------*/
+int
+ieee_common_pending_is_set(volatile rfc_dataEntry_t *entry)
+{
+  volatile uint8_t *buffer = (volatile uint8_t *)entry;
+  return buffer[9] & 0x10;
+}
+/*---------------------------------------------------------------------------*/
+int
+ieee_common_is_ack(volatile rfc_dataEntry_t *entry, uint8_t seqno)
+{
+  volatile uint8_t *entry_buffer = (uint8_t *)entry;
+
+  volatile uint8_t *pkt;
+  int len;
+
+  len = entry_buffer[8] - 4;
+
+  if(len == IEEE_ACK_LEN) {
+    pkt = entry_buffer + 9;
+
+    if(pkt[IEEE_ACK_LEN - 1] == seqno) {
+      return 1;
+    }
+  }
 
   return 0;
 }
