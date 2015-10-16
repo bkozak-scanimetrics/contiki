@@ -46,6 +46,7 @@
 #include "dev/radio.h"
 
 #include "rf-core/api/ieee_cmd.h"
+#include "rf-core/api/data_entry.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -205,6 +206,15 @@ int ieee_comon_pending_packet(void);
  * Must be called prior to using any of the RX functionality.
  */
 void ieee_common_init_data_queue(void);
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief get the data entry which was most recently finished
+ *
+ * Gives the data entry in the queue which comes before the active entry. If
+ * a rx just finished this will point to the packet which has most recently
+ * finished.
+ */
+volatile rfc_dataEntry_t *ieee_common_last_data_entry(void);
 /*---------------------------------------------------------------------------*/
 #endif /* IEEE_COMMON_H_ */
 /*---------------------------------------------------------------------------*/
