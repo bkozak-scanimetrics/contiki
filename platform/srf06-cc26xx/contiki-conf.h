@@ -82,8 +82,14 @@
 
 /* Configure ContikiMAC for when it's selected */
 #define CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER  0
+
+#ifndef CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION
 #define CONTIKIMAC_CONF_WITH_PHASE_OPTIMIZATION 0
+#endif
+
+#ifndef WITH_FAST_SLEEP
 #define WITH_FAST_SLEEP                         1
+#endif
 
 #ifndef NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE
 #define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE    8

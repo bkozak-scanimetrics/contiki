@@ -120,7 +120,12 @@ struct mac_info {
 /*---------------------------------------------------------------------------*/
 /*----------------------------------DEFINES----------------------------------*/
 /*---------------------------------------------------------------------------*/
+#ifdef RADIO_CONF_DEBUG
+#define DEBUG RADIO_CONF_DEBUG
+#else
 #define DEBUG 0
+#endif
+
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -295,6 +300,10 @@ static unsigned short duty_cycle(void);
 /* Phase Optimization Functions */
 static void schedule_phase(void);
 static void phase_wait_done(struct rtimer *t, void *ptr);
+
+/* debugging functions */
+void contikimac_async_show_strobe_state(void);
+void contikimac_async_show_cca_state(void);
 
 /* Driver Process */
 PROCESS(contikmac_async_process, "cm async process");
@@ -1419,6 +1428,30 @@ phase_wait_done(struct rtimer *t, void *ptr)
 {
   set_tx_state(TX_STATE_PENDING);
   start_strobes();
+}
+/*---------------------------------------------------------------------------*/
+/*---------------------------------DEBUGGING---------------------------------*/
+/*---------------------------------------------------------------------------*/
+void
+contikimac_async_show_strobe_state(void)
+{
+  PRINTF("driver_lock: %d\n", driver_lock);
+  PRINTF("tx_state:    %d\n", strobe_state.tx_state);
+  PRINTF("tx lc:       %d\n", strobe_state.pt.lc);
+  PRINTF("tx flags:    %d\n", strobe_state.flags);
+  PRINTF("ack_done     %d\n", strobe_state.ack_done);
+  PRINTF("tx rt state  %d\n", strobe_state.rt.state);
+  PRINTF("tx rt time   %lu\n", strobe_state.rt.time);
+}
+/*---------------------------------------------------------------------------*/
+void
+contikimac_async_show_cca_state(void)
+{
+  PRINTF("driver_lock: %d\n", driver_lock);
+  PRINTF("rx_state:    %d\n", cca_state.rx_state);
+  PRINTF("rx lc:       %d\n", cca_state.pt.lc);
+  PRINTF("rx rt state  %d\n", cca_state.rt.state);
+  PRINTF("rx rt time   %lu\n", cca_state.rt.time);
 }
 /*---------------------------------------------------------------------------*/
 /*-------------------------------DRIVER STRUCT-------------------------------*/

@@ -82,7 +82,12 @@
 #define CC_ALIGN_ATTR(n)
 #endif
 /*---------------------------------------------------------------------------*/
+#ifdef RADIO_CONF_DEBUG
+#define DEBUG RADIO_CONF_DEBUG
+#else
 #define DEBUG 0
+#endif
+
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
