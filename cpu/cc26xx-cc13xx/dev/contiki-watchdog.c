@@ -45,6 +45,7 @@
 #include "contiki.h"
 #include "dev/watchdog.h"
 #include "ti-lib.h"
+#include "dev/soc-wdt.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -52,7 +53,7 @@
 #ifdef CONTIKI_WATCHDOG_CONF_TIMER_TOP
 #define CONTIKI_WATCHDOG_TIMER_TOP CONTIKI_WATCHDOG_CONF_TIMER_TOP
 #else
-#define CONTIKI_WATCHDOG_TIMER_TOP 0xFFFFF
+#define CONTIKI_WATCHDOG_TIMER_TOP SOC_WDT_MILLISECONDS(1399)
 #endif
 
 #ifdef  CONTIKI_WATCHDOG_CONF_LOCK_CONFIG
