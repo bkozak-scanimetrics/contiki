@@ -6,8 +6,7 @@
 #endif
 
 #define CC_CONF_REGISTER_ARGS 1
-#define CC_CONF_FASTCALL __fastcall
-#define CC_CONF_INLINE   __inline
+#define CC_CONF_INLINE        __inline
 
 #define ARCH_DOESNT_NEED_ALIGNED_STRUCTS 1
 
@@ -61,8 +60,8 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_TCP_SPLIT           1
 #define UIP_CONF_LOGGING             1
 #define UIP_CONF_UDP_CHECKSUMS       1
-#if NETSTACK_CONF_WITH_IPV6
 #define UIP_CONF_IP_FORWARD          0
+#if NETSTACK_CONF_WITH_IPV6
 #define NBR_TABLE_CONF_MAX_NEIGHBORS 100
 #define UIP_CONF_DS6_DEFRT_NBU       2
 #define UIP_CONF_DS6_PREFIX_NBU      5
@@ -70,8 +69,6 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_DS6_ADDR_NBU        10
 #define UIP_CONF_DS6_MADDR_NBU       0  //VC++ does not allow zero length arrays
 #define UIP_CONF_DS6_AADDR_NBU       0  //inside a struct
-#else
-#define UIP_CONF_IP_FORWARD          1
 #endif
 
 #define RESOLV_CONF_SUPPORTS_MDNS              0
@@ -173,8 +170,9 @@ typedef unsigned short uip_stats_t;
 #define SHELL_GUI_CONF_YSIZE 30
 
 
+#define TELNETD_CONF_MAX_IDLE_TIME 300
 #ifdef PLATFORM_BUILD
-#define TELNETD_CONF_GUI 1
+#define TELNETD_CONF_GUI             1
 #endif /* PLATFORM_BUILD */
 
 

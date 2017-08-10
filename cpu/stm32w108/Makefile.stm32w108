@@ -102,12 +102,10 @@ ifeq ($(STM32W_CPUREV), CC)
   LD-EXT=-stm32w108CC
   RAM_SIZE = 2*8192
   FLASH_SIZE = 2*128*1024
- ${warning "using stm32w108CC specific ld file"}
 else ifeq ($(STM32W_CPUREV), xB)
   LD-EXT=-stm32w108xB
   RAM_SIZE = 8192
   FLASH_SIZE = 128*1024
- ${warning "using stm32w108xB specific ld file"}
 else
  ${error "Bad STM32W_CPUREV value or no STM32W_CPUREV value specified. Cpu revision should be specified. Please read cpu/stm32w108/README.txt for more details."}
 endif
@@ -237,13 +235,13 @@ $(OBJECTDIR)/%.o: %.c | $(OBJECTDIR)
 	@$(FINALIZE_DEPENDENCY)
 
 CUSTOM_RULE_C_TO_CO = 1
-%.co: %.c
+$(BUILDDIR)/%.co: %.c | $(BUILDDIR)
 	$(TRACE_CC)
 	$(Q)$(CC) $(CFLAGS) -DAUTOSTART_ENABLE $< -o $@
 else #IAR
 
 CUSTOM_RULE_C_TO_CE = 1
-%.ce: %.c
+$(BUILDDIR)/%.ce: %.c | $(BUILDDIR)
 	$(TRACE_CC)
 	$(Q)$(CC) $(CFLAGS) -fno-merge-constants -fno-function-sections -DAUTOSTART_ENABLE -c $< -o $@
 	$(STRIP) --strip-unneeded -g -x $@
@@ -263,7 +261,7 @@ symbols.c symbols.h:
 	cp ${CONTIKI}/tools/empty-symbols.h symbols.h
 endif
 
-%.$(TARGET): %.co $(PROJECT_OBJECTFILES) $(PROJECT_LIBRARIES) contiki-$(TARGET).a $(OBJECTDIR)/symbols.o
+%.$(TARGET): %.co $(PROJECT_OBJECTFILES) $(PROJECT_LIBRARIES) $(CONTIKI_LIB) $(OBJECTDIR)/symbols.o
 	$(TRACE_LD)
 	$(Q)$(LD) $(LDFLAGS) $(TARGET_STARTFILES) ${filter-out %.a,$^} -Wl,-\( ${filter %.a,$^} $(TARGET_LIBFILES) -Wl,-\) -o $@
 	@echo >> contiki-$(TARGET).map
