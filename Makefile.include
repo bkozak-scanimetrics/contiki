@@ -106,12 +106,6 @@ CONTIKI_SOURCEFILES += $(CONTIKIFILES)
 CONTIKIDIRS += ${addprefix $(CONTIKI)/core/,dev lib net net/llsec net/mac net/rime \
                  net/rpl sys cfs ctk lib/ctk loader . }
 
-oname = ${patsubst %.c,%.o,${patsubst %.S,%.o,$(1)}}
-
-CONTIKI_OBJECTFILES = ${addprefix $(OBJECTDIR)/,${call oname, $(CONTIKI_SOURCEFILES)}}
-
-PROJECT_OBJECTFILES = ${addprefix $(OBJECTDIR)/,${call oname, $(PROJECT_SOURCEFILES)}}
-
 CONTIKI_LIB = $(BUILDDIR)/contiki-$(TARGET).a
 
 $(BUILDDIR):
@@ -120,6 +114,12 @@ $(BUILDDIR):
 # Provide way to create $(OBJECTDIR) if it has been removed by make clean
 $(OBJECTDIR): | $(BUILDDIR)
 	mkdir $@
+
+oname = ${patsubst %.c,%.o,${patsubst %.S,%.o,${patsubst %.cpp,%.o,$(1)}}}
+
+#	CONTIKI_OBJECTFILES used by target makefiles custom rules
+CONTIKI_OBJECTFILES = ${addprefix $(OBJECTDIR)/,${call oname, $(CONTIKI_SOURCEFILES)}}
+PROJECT_OBJECTFILES = ${addprefix $(OBJECTDIR)/,${call oname, $(PROJECT_SOURCEFILES)}}
 
 uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
 
@@ -155,6 +155,7 @@ ifdef MODULES
   UNIQUEMODULES = $(call uniq,$(MODULES))
   MODULEDIRS = ${wildcard ${addprefix $(CONTIKI)/, $(UNIQUEMODULES)}}
   MODULES_SOURCES = ${foreach d, $(MODULEDIRS), ${subst ${d}/,,${wildcard $(d)/*.c}}}
+  MODULES_SOURCES += ${foreach d, $(MODULEDIRS), ${subst ${d}/,,${wildcard $(d)/*.cpp}}}
   CONTIKI_SOURCEFILES += $(MODULES_SOURCES)
   APPDS += $(MODULEDIRS)
 endif
@@ -163,12 +164,14 @@ endif
 
 ifeq ($(V),1)
   TRACE_CC =
+  TRACE_CCX=
   TRACE_LD =
   TRACE_AR =
   TRACE_AS =
   Q=
 else
   TRACE_CC = @echo "  CC       " $<
+  TRACE_CCX= @echo "  C++      " $<
   TRACE_LD = @echo "  LD       " $@
   TRACE_AR = @echo "  AR       " $@
   TRACE_AS = @echo "  AS       " $<
@@ -191,7 +194,9 @@ SOURCEDIRS = . $(PROJECTDIRS) $(CONTIKI_TARGET_DIRS_CONCAT) \
              $(CONTIKI_CPU_DIRS_CONCAT) $(CONTIKIDIRS) $(APPDS) ${dir $(target_makefile)}
 
 vpath %.c $(SOURCEDIRS)
+vpath %.cpp $(SOURCEDIRS)
 vpath %.S $(SOURCEDIRS)
+vpath %.o $(OBJECTDIR)
 
 CFLAGS += ${addprefix -I,$(SOURCEDIRS) $(CONTIKI)}
 
@@ -205,11 +210,15 @@ ifneq ($(RELSTR),)
 CFLAGS += -DCONTIKI_VERSION_STRING=\"Contiki-$(RELSTR)\"
 endif
 
+CFLAGS_CPU ?=
+CPPFLAGS := ${CPPFLAGS} ${CFLAGS}
+CFLAGS := ${CFLAGS_CPU} ${CFLAGS}
+
 ### Automatic dependency generation
 
 ifneq ($(MAKECMDGOALS),clean)
--include ${addprefix $(OBJECTDIR)/,$(CONTIKI_SOURCEFILES:.c=.d) \
-                                   $(PROJECT_SOURCEFILES:.c=.d)}
+-include ${addprefix $(OBJECTDIR)/,$(CONTIKI_OBJECTFILES:.o=.d) \
+                                   $(PROJECT_OBJECTFILES:.o=.d)}
 endif
 
 ### See http://make.paulandlesley.org/autodep.html#advanced
@@ -244,9 +253,15 @@ $(BUILDDIR)/%.ce: %.c | $(BUILDDIR)
 endif
 
 ifndef CUSTOM_RULE_C_TO_OBJECTDIR_O
+$(info custom object/rule to $(OBJECTDIR))
 $(OBJECTDIR)/%.o: %.c | $(OBJECTDIR)
 	$(TRACE_CC)
 	$(Q)$(CC) $(CFLAGS) -MMD -c $< -o $@
+	@$(FINALIZE_DEPENDENCY)
+
+$(OBJECTDIR)/%.o: %.cpp | $(OBJECTDIR)
+	$(TRACE_CCX)
+	$(Q)$(CCX) $(CPPFLAGS) -MMD -c $< -o $@
 	@$(FINALIZE_DEPENDENCY)
 endif
 
@@ -260,6 +275,10 @@ ifndef CUSTOM_RULE_C_TO_O
 %.o: %.c
 	$(TRACE_CC)
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(TRACE_CCX)
+	$(Q)$(CCX) $(CPPFLAGS) -c $< -o $@
 endif
 
 
@@ -267,6 +286,10 @@ ifndef CUSTOM_RULE_C_TO_CO
 $(BUILDDIR)/%.co: %.c | $(BUILDDIR)
 	$(TRACE_CC)
 	$(Q)$(CC) $(CFLAGS) -DAUTOSTART_ENABLE -c $< -o $@
+
+$(BUILDDIR)/%.co: %.cpp | $(BUILDDIR)
+	$(TRACE_CCX)
+	$(Q)$(CCX) $(CPPFLAGS) -DAUTOSTART_ENABLE -c $< -o $@
 endif
 
 ifndef AROPTS
@@ -304,6 +327,8 @@ endif
 # a single C source into a binary to force GNU make to consider
 # the match-anything rule below instead.
 %: %.c
+
+%: %.cpp
 
 # Match-anything pattern rule to allow the project makefiles to
 # abstract from the actual binary name. It needs to contain some

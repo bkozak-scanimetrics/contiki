@@ -1,4 +1,5 @@
 CC      = arm-none-eabi-gcc
+CCX     = arm-none-eabi-g++
 CPP     = arm-none-eabi-cpp
 LD      = arm-none-eabi-gcc
 AR      = arm-none-eabi-ar
@@ -29,10 +30,22 @@ MODULES += $(TI_XXWARE_SRC)
 
 LDSCRIPT = $(CONTIKI_CPU)/cc26xx.ld
 
-CFLAGS += -mcpu=cortex-m3 -mthumb -mlittle-endian
+DEBUG ?= off
+
+CFLAGS_CPU += -mcpu=cortex-m3 -mthumb -mlittle-endian -std=c99
+CPPFLAGS += -mtune=cortex-m3 -mthumb -mlittle-endian -fno-exceptions
+#CPPFLAGS += -mfloat-abi=soft 
 CFLAGS += -ffunction-sections -fdata-sections
-CFLAGS += -fshort-enums -fomit-frame-pointer -fno-strict-aliasing
-CFLAGS += -Wall -std=c99
+CFLAGS += -fshort-enums -fno-strict-aliasing
+CFLAGS += -Wall
+ifeq ([$(DEBUG)],[off])
+CFLAGS += -fomit-frame-pointer 
+else
+CFLAGS += -g3 -save-temps=obj
+ifeq ([$(filter -DDEBUG% -DDEBUG,${CFLAGS})],[])
+  CFLAGS += -DDEBUG=$(DEBUG)
+endif
+endif
 
 LDFLAGS += -mcpu=cortex-m3 -mthumb -mlittle-endian -nostartfiles
 LDFLAGS += -T $(LDSCRIPT)
@@ -49,7 +62,11 @@ endif
 ifeq ($(SMALL),1)
   CFLAGS += -Os
 else
+ifeq ([$(DEBUG)],[off])
   CFLAGS += -O2
+else
+  CFLAGS += -O1
+endif
 endif
 
 ### If the user-specified a Node ID, pass a define
