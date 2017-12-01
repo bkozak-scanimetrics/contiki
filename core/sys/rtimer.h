@@ -116,14 +116,14 @@ struct rtimer {
 #endif
 };
 
-enum {
+typedef enum {
   RTIMER_OK,
   RTIMER_ERR_FULL,
   RTIMER_ERR_TIME,
   RTIMER_ERR_ALREADY_SCHEDULED,
   RTIMER_ERR_NOT_SCHEDULED,
   RTIMER_ERR_TOO_LATE
-};
+} rtimer_error;
 
 /**
  * \brief      Post a real-time task.
@@ -132,14 +132,13 @@ enum {
  * \param duration Unused argument.
  * \param func A function to be called when the task is executed.
  * \param ptr An opaque pointer that will be supplied as an argument to the callback function.
- * \return     Non-zero (true) if the task could be scheduled, zero
- *             (false) if the task could not be scheduled.
+ * \return     RTIMER_OK if the task could be scheduled.
  *
  *             This function schedules a real-time task at a specified
  *             time in the future.
  *
  */
-int rtimer_set(struct rtimer *task, rtimer_clock_t time,
+rtimer_error rtimer_set(struct rtimer *task, rtimer_clock_t time,
                rtimer_clock_t duration, rtimer_callback_t func, void *ptr);
 
 /**
@@ -160,7 +159,7 @@ void rtimer_run_next(void);
  * wasn't scheduled and RTIMER_ERR_TOO_LATE if it's too late to cancel the
  * rtimer
  */
-int rtimer_cancel(struct rtimer *rtimer);
+rtimer_error rtimer_cancel(struct rtimer *rtimer);
 
 /**
  * \brief      Get the current clock time

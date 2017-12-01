@@ -231,12 +231,12 @@ func_call_list(volatile struct rtimer *list)
 /*---------------------------------------------------------------------------*/
 /*---------------------------SINGLE ACCESS RTIMER----------------------------*/
 /*---------------------------------------------------------------------------*/
-static int
+static rtimer_error
 add_single_access(struct rtimer *rtimer)
 {
   int first = 0;
 
-  if(next_rtimer == NULL) {
+  if ((next_rtimer == NULL) || (next_rtimer == rtimer)) {
     first = 1;
   }
 
@@ -249,7 +249,7 @@ add_single_access(struct rtimer *rtimer)
   return RTIMER_OK;
 }
 /*---------------------------------------------------------------------------*/
-static int
+static rtimer_error
 remove_single_access(struct rtimer *rtimer)
 {
   if(rtimer == next_rtimer) {
@@ -293,7 +293,7 @@ rtimer_init(void)
   rtimer_arch_init();
 }
 /*---------------------------------------------------------------------------*/
-int
+rtimer_error
 rtimer_cancel(struct rtimer *rtimer)
 {
   if(RTIMER_MULTIPLE_ACCESS) {
@@ -303,7 +303,7 @@ rtimer_cancel(struct rtimer *rtimer)
   }
 }
 /*---------------------------------------------------------------------------*/
-int
+rtimer_error
 rtimer_set(struct rtimer *rtimer, rtimer_clock_t time,
            rtimer_clock_t duration, rtimer_callback_t func, void *ptr)
 {
