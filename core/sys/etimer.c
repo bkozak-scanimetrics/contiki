@@ -167,6 +167,16 @@ add_timer(struct etimer *timer)
     etimer_stop(timer);
   }
 
+  // this is protection vs addin alredy expired timers
+  if (timer_expired_at(&timer->timer, now)){
+      //some APP try use immediate expired timers, for Delayed ProcCall.
+      //    handle such events as valid active ordinary notify mesasges
+      if (timer->timer.interval > 0)
+          process_post(proc, PROCESS_EVENT_TIMER, timer);
+      PRINTF("etimer(%p): alredy expired\n", timer);
+      return;
+  }
+
   timer->p = proc;
 
   if(timerlist == NULL || etimer_lte(timer, timerlist, now)) {
